@@ -1,3 +1,10 @@
+# Vibe Coding #
+
+Everything in this project, other this README paragraph, was created during a one hour vibe coding session I had with a Claude Sonnet 4 agent in Visual Studio Code. I gave it an initial prompt full of requirements and design ideas and it created the project. I continued to give it more prompts until I had a testable application. It's not done, but the README below would have taken me a lot longer than an hour all by itself if I didn't use AI.
+
+
+
+
 # AI Chatbot Application
 
 A modern, production-ready web-based chatbot application built with Angular 18 frontend and .NET 8 backend, featuring Azure OpenAI integration and real-time communication via SignalR.
