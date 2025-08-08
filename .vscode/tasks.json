@@ -1,0 +1,69 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build-backend",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"Backend/ChatbotApp.Backend.csproj"
+			],
+			"group": "build",
+			"problemMatcher": [
+				"$msCompile"
+			]
+		},
+		{
+			"label": "run-backend",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"Backend/ChatbotApp.Backend.csproj"
+			],
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": [
+				"$msCompile"
+			]
+		},
+		{
+			"label": "start-frontend",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"start"
+			],
+			"options": {
+				"cwd": "Frontend"
+			},
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "install-frontend-deps",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"install"
+			],
+			"options": {
+				"cwd": "Frontend"
+			},
+			"group": "build"
+		},
+		{
+			"label": "start-all",
+			"dependsOrder": "parallel",
+			"dependsOn": [
+				"run-backend",
+				"start-frontend"
+			],
+			"group": "build",
+			"isBackground": true
+		}
+	]
+}
