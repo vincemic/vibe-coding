@@ -43,9 +43,22 @@ public class ChatHub : Hub
     {
         _logger.LogInformation("Client connected: {ConnectionId}", Context.ConnectionId);
         
-        // Send welcome message to the newly connected client
-        await Clients.Caller.SendAsync("ReceiveMessage", "Assistant", 
-            "Hello! I'm your AI assistant. How can I help you today?", DateTime.UtcNow);
+        try
+        {
+            // Wait a short moment to ensure the client is ready to receive messages
+            await Task.Delay(500);
+            
+            // Send welcome message to the newly connected client
+            _logger.LogInformation("Sending welcome message to client: {ConnectionId}", Context.ConnectionId);
+            await Clients.Caller.SendAsync("ReceiveMessage", "Assistant", 
+                "Hello! I'm your AI assistant. How can I help you today?", DateTime.UtcNow);
+            
+            _logger.LogInformation("Welcome message sent successfully to client: {ConnectionId}", Context.ConnectionId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending welcome message to client: {ConnectionId}", Context.ConnectionId);
+        }
         
         await base.OnConnectedAsync();
     }

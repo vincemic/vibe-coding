@@ -14,7 +14,16 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngularApp", policy =>
     {
-        policy.WithOrigins("http://localhost:4200")
+        policy.WithOrigins("http://localhost:4200", "http://localhost:4201", "http://localhost:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+    
+    // Add a development policy for testing
+    options.AddPolicy("AllowDevelopment", policy =>
+    {
+        policy.SetIsOriginAllowed(_ => true)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -48,18 +57,12 @@ builder.Services.AddLogging(logging =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseDeveloperExceptionPage();
-    app.UseCors("AllowAngularApp");
-}
-else
-{
-    app.UseCors("AllowAngularApp");
-}
+// Temporarily always use development CORS for debugging
+app.UseDeveloperExceptionPage();
+app.UseCors("AllowDevelopment");
 
 app.UseHttpsRedirection();
-app.UseCors("AllowAngularApp");
+app.UseCors("AllowDevelopment");
 app.UseRouting();
 app.UseAuthorization();
 

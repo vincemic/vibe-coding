@@ -64,6 +64,18 @@
 			],
 			"group": "build",
 			"isBackground": true
+		},
+		{
+			"label": "run-backend-dev",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"Backend/ChatbotApp.Backend.csproj"
+			],
+			"isBackground": true,
+			"group": "build"
 		}
 	]
 }

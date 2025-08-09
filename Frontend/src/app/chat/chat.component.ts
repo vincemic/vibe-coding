@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SignalRService, ChatMessage } from '../services/signalr.service';
@@ -21,19 +21,38 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   public isWaiting: boolean = false;
   private messageSubscription: Subscription | undefined;
 
-  constructor(public signalRService: SignalRService) {}
+  constructor(public signalRService: SignalRService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
+    console.log('ChatComponent ngOnInit called');
     this.messageSubscription = this.signalRService.messageReceived$.subscribe(
       (message: ChatMessage) => {
+        console.log('ChatComponent received message:', message);
         this.messages.push(message);
         
         // If it's an AI response, stop the waiting indicator
         if (message.user === 'Assistant') {
           this.isWaiting = false;
         }
+        
+        // Manually trigger change detection
+        this.cdr.detectChanges();
       }
     );
+
+    // Monitor connection state
+    setInterval(() => {
+      const connectionInfo = this.signalRService.getConnectionInfo();
+      console.log('Connection state:', connectionInfo);
+    }, 5000);
+
+    // Ensure connection is established when component is ready
+    setTimeout(() => {
+      console.log('Ensuring SignalR connection...');
+      this.signalRService.ensureConnection().catch(err => {
+        console.error('Failed to ensure SignalR connection:', err);
+      });
+    }, 100);
   }
 
   ngAfterViewChecked(): void {

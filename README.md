@@ -1194,6 +1194,86 @@ git push origin v1.0.0
 - [ ] Production configuration verified
 - [ ] Deployment scripts tested
 
+---
+
+## 🔧 Recent Bug Fixes & Improvements
+
+### SignalR Connection & Welcome Message Issues (August 2025)
+
+#### Fixed: Agent Not Starting Conversation on Frontend Connect
+**Problem**: The chatbot agent wasn't automatically sending a welcome message when users first connected to the application, requiring users to type something first before seeing any response.
+
+**Root Causes Identified:**
+1. **Port Mismatch**: Frontend was connecting to `localhost:5001` while backend was running on `localhost:5000`
+2. **CORS Policy Issues**: Restrictive CORS configuration was blocking cross-origin SignalR connections
+3. **Angular Change Detection**: SignalR messages arriving outside Angular's zone weren't triggering UI updates
+4. **Message Timing**: Race condition between connection establishment and message listener setup
+
+**Solutions Implemented:**
+
+1. **Port Configuration Fix**
+   ```typescript
+   // Fixed SignalR connection URL in signalr.service.ts
+   .withUrl('http://localhost:5000/chathub') // Changed from 5001 to 5000
+   ```
+
+2. **CORS Policy Enhancement**
+   ```csharp
+   // Enhanced CORS policy in Program.cs to allow development connections
+   builder.Services.AddCors(options =>
+   {
+       options.AddPolicy("AllowDevelopment", policy =>
+           policy.AllowAnyOrigin()
+                 .AllowAnyMethod()
+                 .AllowAnyHeader());
+   });
+   ```
+
+3. **Angular Zone Integration**
+   ```typescript
+   // Added NgZone integration to ensure proper change detection
+   this.hubConnection.on('ReceiveMessage', (user, message, timestamp) => {
+       this.ngZone.run(() => {
+           // Message handling inside Angular zone
+           this.messageReceivedSubject.next(chatMessage);
+       });
+   });
+   ```
+
+4. **Message Buffering with ReplaySubject**
+   ```typescript
+   // Implemented message buffering to handle timing issues
+   private messageReceivedSubject = new ReplaySubject<ChatMessage>(10);
+   ```
+
+5. **Connection Event Handling**
+   ```typescript
+   // Added comprehensive connection event handlers
+   this.hubConnection.onclose((error) => console.log('Connection closed:', error));
+   this.hubConnection.onreconnecting((error) => console.log('Reconnecting:', error));
+   this.hubConnection.onreconnected((id) => console.log('Reconnected:', id));
+   ```
+
+**Results:**
+- ✅ Welcome messages now appear immediately upon connection
+- ✅ Connection status correctly shows "Connected" instead of "Disconnected"
+- ✅ Real-time UI updates work without requiring user interaction
+- ✅ Stable SignalR connections with proper reconnection handling
+- ✅ Backend logs confirm successful message delivery
+
+**Testing:**
+- Verified with multiple browser sessions
+- Confirmed welcome message delivery in backend logs
+- Tested connection stability and automatic reconnection
+- Validated proper change detection in Angular components
+
+#### Backend Process Stability
+**Fixed**: Backend process was terminating unexpectedly due to port conflicts and multiple instance launches.
+
+**Solution**: Implemented proper process management and port conflict resolution in development workflow.
+
+---
+
 ## 📄 License & Support
 
 ### License

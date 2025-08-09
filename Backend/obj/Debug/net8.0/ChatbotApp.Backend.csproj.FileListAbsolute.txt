@@ -55,3 +55,4 @@ C:\repos\vibe\Backend\obj\Debug\net8.0\refint\ChatbotApp.Backend.dll
 C:\repos\vibe\Backend\obj\Debug\net8.0\ChatbotApp.Backend.pdb
 C:\repos\vibe\Backend\obj\Debug\net8.0\ChatbotApp.Backend.genruntimeconfig.cache
 C:\repos\vibe\Backend\obj\Debug\net8.0\ref\ChatbotApp.Backend.dll
+C:\repos\vibe\Backend\obj\Debug\net8.0\ChatbotApp.Backend.sourcelink.json
