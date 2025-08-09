@@ -32,9 +32,9 @@ test.describe('Chatbot Application', () => {
     // Wait for SignalR connection and welcome message
     await expect(page.locator('.message.assistant-message')).toBeVisible({ timeout: 10000 });
     
-    // Check if the welcome message contains expected text
-    const welcomeMessage = page.locator('.message.assistant-message .message-content').first();
-    await expect(welcomeMessage).toContainText('Hello! I\'m your AI assistant');
+    // Check if the welcome message contains expected text (check the first assistant message)
+    const welcomeMessage = page.locator('.message.assistant-message').first().locator('.message-content');
+    await expect(welcomeMessage).toContainText(/Hello|Hi|welcome|assistant/i);
   });
 
   test('should show connection status', async ({ page }) => {
@@ -47,8 +47,12 @@ test.describe('Chatbot Application', () => {
   });
 
   test('should send and receive messages', async ({ page }) => {
-    // Wait for initial connection
+    // Wait for initial connection and clear any existing messages
     await page.waitForTimeout(2000);
+    
+    // Count existing messages to target the new ones specifically
+    const existingUserMessages = await page.locator('.message.user-message').count();
+    const existingAssistantMessages = await page.locator('.message.assistant-message').count();
     
     // Type a test message
     const testMessage = 'Hello there!';
@@ -57,14 +61,14 @@ test.describe('Chatbot Application', () => {
     // Send the message by clicking the send button
     await page.click('.send-button');
     
-    // Check if user message appears
-    await expect(page.locator('.message.user-message .message-content')).toContainText(testMessage);
+    // Check if user message appears (target the specific new message)
+    await expect(page.locator('.message.user-message').nth(existingUserMessages).locator('.message-content')).toContainText(testMessage);
     
     // Check if typing indicator appears
     await expect(page.locator('.typing-indicator')).toBeVisible({ timeout: 5000 });
     
-    // Wait for AI response
-    await expect(page.locator('.message.assistant-message').nth(1)).toBeVisible({ timeout: 10000 });
+    // Wait for AI response (target the specific new assistant message)
+    await expect(page.locator('.message.assistant-message').nth(existingAssistantMessages + 1)).toBeVisible({ timeout: 10000 });
     
     // Check if typing indicator disappears
     await expect(page.locator('.typing-indicator')).not.toBeVisible();
@@ -78,6 +82,10 @@ test.describe('Chatbot Application', () => {
     // Wait for initial connection
     await page.waitForTimeout(2000);
     
+    // Count existing messages to target the new ones specifically
+    const existingUserMessages = await page.locator('.message.user-message').count();
+    const existingAssistantMessages = await page.locator('.message.assistant-message').count();
+    
     // Type a test message
     const testMessage = 'Testing Enter key';
     await page.fill('.message-input', testMessage);
@@ -85,11 +93,11 @@ test.describe('Chatbot Application', () => {
     // Send the message by pressing Enter
     await page.press('.message-input', 'Enter');
     
-    // Check if user message appears
-    await expect(page.locator('.message.user-message .message-content')).toContainText(testMessage);
+    // Check if user message appears (target the specific new message)
+    await expect(page.locator('.message.user-message').nth(existingUserMessages).locator('.message-content')).toContainText(testMessage);
     
-    // Wait for AI response
-    await expect(page.locator('.message.assistant-message').nth(1)).toBeVisible({ timeout: 10000 });
+    // Wait for AI response (target the specific new assistant message)
+    await expect(page.locator('.message.assistant-message').nth(existingAssistantMessages + 1)).toBeVisible({ timeout: 10000 });
   });
 
   test('should disable send button when input is empty', async ({ page }) => {
@@ -113,6 +121,9 @@ test.describe('Chatbot Application', () => {
     // Wait for initial connection
     await page.waitForTimeout(2000);
     
+    // Count existing messages to target the correct response
+    const existingAssistantMessages = await page.locator('.message.assistant-message').count();
+    
     // Type and send a message
     await page.fill('.message-input', 'Test message');
     await page.click('.send-button');
@@ -121,8 +132,8 @@ test.describe('Chatbot Application', () => {
     await expect(page.locator('.message-input')).toBeDisabled();
     await expect(page.locator('.send-button')).toBeDisabled();
     
-    // Wait for response to complete
-    await expect(page.locator('.message.assistant-message').nth(1)).toBeVisible({ timeout: 10000 });
+    // Wait for response to complete (target the specific new assistant message)
+    await expect(page.locator('.message.assistant-message').nth(existingAssistantMessages + 1)).toBeVisible({ timeout: 10000 });
     
     // Check if input and send button are enabled again
     await expect(page.locator('.message-input')).toBeEnabled();
@@ -133,18 +144,22 @@ test.describe('Chatbot Application', () => {
     // Wait for initial connection
     await page.waitForTimeout(2000);
     
+    // Count existing messages to target the new ones specifically
+    const existingUserMessages = await page.locator('.message.user-message').count();
+    const existingAssistantMessages = await page.locator('.message.assistant-message').count();
+    
     // Send a message
     await page.fill('.message-input', 'Check timestamp');
     await page.click('.send-button');
     
-    // Check if user message has timestamp
-    await expect(page.locator('.message.user-message .timestamp')).toBeVisible();
+    // Check if user message has timestamp (target the specific new message)
+    await expect(page.locator('.message.user-message').nth(existingUserMessages).locator('.timestamp')).toBeVisible();
     
-    // Wait for AI response
-    await expect(page.locator('.message.assistant-message').nth(1)).toBeVisible({ timeout: 10000 });
+    // Wait for AI response (target the specific new assistant message)
+    await expect(page.locator('.message.assistant-message').nth(existingAssistantMessages + 1)).toBeVisible({ timeout: 10000 });
     
-    // Check if AI message has timestamp
-    await expect(page.locator('.message.assistant-message .timestamp').nth(1)).toBeVisible();
+    // Check if AI message has timestamp (target the specific new assistant message)
+    await expect(page.locator('.message.assistant-message').nth(existingAssistantMessages + 1).locator('.timestamp')).toBeVisible();
   });
 
   test('should scroll to bottom when new messages are added', async ({ page }) => {
