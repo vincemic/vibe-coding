@@ -104,7 +104,13 @@ public class QuizHub : Hub
                 DateTime.UtcNow);
 
             // Send player info to the caller
-            await Clients.Caller.SendAsync("PlayerJoined", player);
+            await Clients.Caller.SendAsync("PlayerJoined", new PlayerInfo 
+            { 
+                Id = player.Id, 
+                Name = player.Name, 
+                Score = player.Score,
+                HasAnswered = player.HasAnswered
+            });
 
             // Update all clients with current game state
             await Clients.All.SendAsync("GameStateUpdate", new GameUpdate
@@ -124,10 +130,10 @@ public class QuizHub : Hub
                 }
             });
 
-            // Auto-start if we have enough players (optional)
-            if (activeGame.Players.Count >= 2 && activeGame.CanStart)
+            // Auto-start if we have enough players (allow single player for testing)
+            if (activeGame.Players.Count >= 1 && activeGame.CanStart)
             {
-                await Task.Delay(5000); // Wait 5 seconds for more players
+                await Task.Delay(3000); // Wait 3 seconds for more players
                 var currentGame = _quizService.GetActiveGame();
                 if (currentGame != null && currentGame.CanStart)
                 {
@@ -171,8 +177,9 @@ public class QuizHub : Hub
                 Data = new { Countdown = 3 }
             });
 
-            // Monitor game progress
-            _ = Task.Run(() => MonitorGameProgress(gameId));
+            // Start first question after delay
+            await Task.Delay(3000);
+            await SendCurrentQuestion(gameId);
         }
         catch (Exception ex)
         {
@@ -270,43 +277,6 @@ public class QuizHub : Hub
         await base.OnDisconnectedAsync(exception);
     }
 
-    private async Task MonitorGameProgress(string gameId)
-    {
-        try
-        {
-            while (true)
-            {
-                await Task.Delay(1000); // Check every second
-                
-                var game = await _quizService.GetGameAsync(gameId);
-                if (game == null) break;
-
-                switch (game.State)
-                {
-                    case GameState.QuestionDisplay:
-                        await SendCurrentQuestion(gameId);
-                        break;
-                    
-                    case GameState.WaitingForAnswers:
-                        await SendTimeUpdate(gameId);
-                        break;
-                    
-                    case GameState.ShowingResults:
-                        await ShowQuestionResults(gameId);
-                        break;
-                    
-                    case GameState.GameOver:
-                        await ShowFinalResults(gameId);
-                        return; // Exit monitoring
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error monitoring game progress for {GameId}", gameId);
-        }
-    }
-
     private async Task SendCurrentQuestion(string gameId)
     {
         var game = await _quizService.GetGameAsync(gameId);
@@ -338,6 +308,12 @@ public class QuizHub : Hub
         await Clients.All.SendAsync("QuizMasterMessage", 
             $"📚 Question {game.CurrentQuestionIndex + 1} of {game.TotalQuestions}: {game.CurrentQuestion.Category}", 
             DateTime.UtcNow);
+        
+        // Start the answer phase
+        await _quizService.SetGameStateAsync(gameId, GameState.WaitingForAnswers);
+        
+        _logger.LogInformation("Question {QuestionNumber} sent to all clients for game {GameId}", 
+            game.CurrentQuestionIndex + 1, gameId);
     }
 
     private async Task SendTimeUpdate(string gameId)

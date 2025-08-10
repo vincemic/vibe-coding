@@ -15,6 +15,7 @@ public interface IQuizService
     Task<QuizGame?> GetGameAsync(string gameId);
     Task<bool> NextQuestionAsync(string gameId);
     Task<bool> RemovePlayerAsync(string gameId, string connectionId);
+    Task<bool> SetGameStateAsync(string gameId, GameState state);
     QuizGame? GetActiveGame();
 }
 
@@ -332,6 +333,19 @@ public class QuizService : IQuizService
             }
 
             return true;
+        }
+    }
+
+    public Task<bool> SetGameStateAsync(string gameId, GameState state)
+    {
+        lock (_gamesLock)
+        {
+            if (!_games.TryGetValue(gameId, out var game))
+                return Task.FromResult(false);
+
+            game.State = state;
+            _logger.LogInformation("Game {GameId} state changed to {State}", gameId, state);
+            return Task.FromResult(true);
         }
     }
 

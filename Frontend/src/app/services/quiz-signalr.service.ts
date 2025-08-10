@@ -56,7 +56,7 @@ export interface GameStatistics {
 }
 
 export interface GameUpdate {
-  state: string;
+  state: number; // Changed from string to number since backend sends numeric enum
   message: string;
   data: any;
   timestamp: string;
@@ -133,7 +133,9 @@ export class QuizSignalRService {
     if (!this.hubConnection) return;
 
     this.hubConnection.on('QuizMasterMessage', (message: string, timestamp: string) => {
+      console.log('QuizMasterMessage event received:', message, timestamp);
       this.ngZone.run(() => {
+        console.log('Processing quiz master message in ngZone');
         this.quizMasterMessage$.next({
           message,
           timestamp: new Date(timestamp)
@@ -154,7 +156,9 @@ export class QuizSignalRService {
     });
 
     this.hubConnection.on('PlayerJoined', (player: Player) => {
+      console.log('PlayerJoined event received:', player);
       this.ngZone.run(() => {
+        console.log('Setting current player in ngZone:', player);
         this.currentPlayer$.next(player);
       });
     });
@@ -195,10 +199,20 @@ export class QuizSignalRService {
   }
 
   public joinGame(playerName: string): void {
+    console.log('QuizSignalRService.joinGame called with:', playerName);
+    console.log('Connection state:', this.hubConnection?.state, 'Established:', this.connectionEstablished);
     if (this.hubConnection && this.connectionEstablished) {
+      console.log('Invoking JoinGame on hub...');
       this.hubConnection
         .invoke('JoinGame', playerName)
-        .catch((err) => console.error('Error joining game: ' + err));
+        .then(() => {
+          console.log('JoinGame invoke successful');
+        })
+        .catch((err) => {
+          console.error('Error joining game: ' + err);
+        });
+    } else {
+      console.error('Cannot join - connection not established');
     }
   }
 

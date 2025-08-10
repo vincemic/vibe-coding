@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -65,7 +65,8 @@ export class QuizComponent implements OnInit, OnDestroy {
 
   constructor(
     private quizService: QuizSignalRService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -88,10 +89,14 @@ export class QuizComponent implements OnInit, OnDestroy {
     // Current player
     this.subscriptions.push(
       this.quizService.currentPlayer$.subscribe(player => {
+        console.log('Current player subscription triggered:', player);
         if (player) {
+          console.log('Setting current player and changing state to WaitingForPlayers');
           this.currentPlayer = player;
           this.currentState = QuizState.WaitingForPlayers;
           this.isJoining = false;
+          this.cdr.detectChanges(); // Force change detection
+          console.log('Change detection triggered, new state:', this.currentState);
         }
       })
     );
@@ -106,6 +111,7 @@ export class QuizComponent implements OnInit, OnDestroy {
     // Quiz master messages
     this.subscriptions.push(
       this.quizService.quizMasterMessage$.subscribe(message => {
+        console.log('Quiz master message received:', message);
         this.quizMasterMessages.push(message);
         // Keep only last 10 messages
         if (this.quizMasterMessages.length > 10) {
@@ -183,36 +189,71 @@ export class QuizComponent implements OnInit, OnDestroy {
   }
 
   private handleGameStateUpdate(update: GameUpdate): void {
-    if (update.data && update.data.Players) {
-      this.players = update.data.Players;
+    console.log('GameStateUpdate received:', update);
+    console.log('Update data:', update.data);
+    
+    if (update.data) {
+      // Backend sends playerCount, not Players array
+      if (typeof update.data.playerCount === 'number') {
+        console.log('Updating player count to:', update.data.playerCount);
+        // For now, we'll create a mock players array based on playerCount
+        // until we get the actual players data from the backend
+        this.players = Array(update.data.playerCount).fill(null).map((_, index) => ({
+          id: `player-${index}`,
+          name: `Player ${index + 1}`,
+          score: 0,
+          hasAnswered: false
+        }));
+        this.cdr.detectChanges();
+      }
+      
+      // Also store the game ID if provided
+      if (update.data.gameId) {
+        console.log('Updating game ID to:', update.data.gameId);
+        this.gameId = update.data.gameId;
+      }
     }
     
+    console.log('Game state changing to:', update.state);
+    // Convert numeric enum to our QuizState
     switch (update.state) {
-      case 'WaitingForPlayers':
+      case 0: // WaitingForPlayers
         this.currentState = QuizState.WaitingForPlayers;
+        this.cdr.detectChanges();
         break;
-      case 'Starting':
+      case 1: // Starting
         this.currentState = QuizState.Starting;
+        this.cdr.detectChanges();
         break;
-      case 'QuestionDisplay':
+      case 2: // QuestionDisplay
         this.currentState = QuizState.QuestionDisplay;
+        this.cdr.detectChanges();
         break;
-      case 'WaitingForAnswers':
+      case 3: // WaitingForAnswers
         this.currentState = QuizState.WaitingForAnswers;
+        this.cdr.detectChanges();
         break;
-      case 'ShowingResults':
+      case 4: // ShowingResults
         this.currentState = QuizState.ShowingResults;
+        this.cdr.detectChanges();
         break;
-      case 'GameOver':
+      case 5: // GameOver
         this.currentState = QuizState.GameOver;
+        this.cdr.detectChanges();
         break;
+      default:
+        console.warn('Unknown game state received:', update.state);
     }
   }
 
   public joinGame(): void {
+    console.log('Join game clicked, playerName:', this.playerName, 'isJoining:', this.isJoining);
     if (this.playerName.trim() && !this.isJoining) {
+      console.log('Attempting to join game with name:', this.playerName.trim());
       this.isJoining = true;
       this.quizService.joinGame(this.playerName.trim());
+    } else {
+      console.log('Join blocked - playerName empty or already joining');
     }
   }
 
