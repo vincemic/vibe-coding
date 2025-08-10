@@ -1,12 +1,12 @@
 import { Component, signal } from '@angular/core';
-import { ChatComponent } from './chat/chat.component';
+import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 
 @Component({
   selector: 'app-root',
-  imports: [ChatComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
 export class App {
-  protected readonly title = signal('AI Chatbot');
+  protected readonly title = signal('AI Assistant');
 }
