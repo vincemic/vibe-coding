@@ -1,17 +1,18 @@
 using Azure.AI.OpenAI;
 using Azure;
+using OpenAI;
 
 namespace ChatbotApp.Backend.Services;
 
 public class ChatService : IChatService
 {
-    private readonly OpenAIClient? _openAiClient;
+    private readonly AzureOpenAIClient? _openAiClient;
     private readonly IConfiguration _configuration;
     private readonly ILogger<ChatService> _logger;
 
     public ChatService(IServiceProvider serviceProvider, IConfiguration configuration, ILogger<ChatService> logger)
     {
-        _openAiClient = serviceProvider.GetService<OpenAIClient>();
+        _openAiClient = serviceProvider.GetService<AzureOpenAIClient>();
         _configuration = configuration;
         _logger = logger;
     }

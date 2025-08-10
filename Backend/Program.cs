@@ -1,7 +1,9 @@
 using ChatbotApp.Backend.Hubs;
 using ChatbotApp.Backend.Services;
+using ChatbotApp.Backend.Extensions;
 using Azure.AI.OpenAI;
 using Azure;
+using System.ClientModel;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,18 +35,22 @@ builder.Services.AddCors(options =>
 // Add Application Insights telemetry
 builder.Services.AddApplicationInsightsTelemetry();
 
-// Add Azure OpenAI client
+// Add Azure OpenAI client (keep for backwards compatibility)
 var openAiEndpoint = builder.Configuration["AzureOpenAI:Endpoint"];
 var openAiKey = builder.Configuration["AzureOpenAI:ApiKey"];
 
 if (!string.IsNullOrEmpty(openAiEndpoint) && !string.IsNullOrEmpty(openAiKey))
 {
-    builder.Services.AddSingleton<OpenAIClient>(provider =>
-        new OpenAIClient(new Uri(openAiEndpoint), new AzureKeyCredential(openAiKey)));
+    builder.Services.AddSingleton<AzureOpenAIClient>(provider =>
+        new AzureOpenAIClient(new Uri(openAiEndpoint), new ApiKeyCredential(openAiKey)));
 }
 
-// Add custom services
-builder.Services.AddScoped<IChatService, ChatService>();
+// Add Semantic Kernel with plugins
+builder.Services.AddSemanticKernel(builder.Configuration);
+builder.Services.AddSemanticKernelLogging();
+
+// Add custom services - Use Semantic Kernel service
+builder.Services.AddScoped<IChatService, SemanticKernelChatService>();
 
 // Add logging
 builder.Services.AddLogging(logging =>
