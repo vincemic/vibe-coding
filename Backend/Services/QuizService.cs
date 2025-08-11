@@ -358,8 +358,8 @@ public class QuizService : IQuizService
                 }
             });
 
-            // Auto-advance after time limit
-            await Task.Delay(game.QuestionTimeLimit * 1000);
+            // Start timer updates for the question
+            await StartQuestionTimer(gameId, game.QuestionTimeLimit);
             
             lock (_gamesLock)
             {
@@ -526,5 +526,53 @@ public class QuizService : IQuizService
         var baseScore = 100;
         var timeBonus = Math.Max(0, 60 - timeTaken); // Bonus for quick answers
         return (int)(baseScore + timeBonus);
+    }
+
+    private async Task StartQuestionTimer(string gameId, int timeLimitSeconds)
+    {
+        _ = Task.Run(async () =>
+        {
+            for (int remainingTime = timeLimitSeconds; remainingTime >= 0; remainingTime--)
+            {
+                QuizGame? game;
+                lock (_gamesLock)
+                {
+                    if (!_games.TryGetValue(gameId, out game) || game.State != GameState.WaitingForAnswers)
+                    {
+                        return; // Game ended or changed state, stop timer
+                    }
+                }
+
+                // Send time update to all clients
+                await _hubContext.Clients.Group(gameId).SendAsync("TimeUpdate", new {
+                    RemainingTime = remainingTime,
+                    AnsweredCount = game.CurrentQuestionAnswers.Count,
+                    TotalPlayers = game.Players.Count
+                });
+
+                // Time warning messages
+                if (remainingTime == 10)
+                {
+                    await _hubContext.Clients.Group(gameId).SendAsync("QuizMasterMessage", 
+                        "⏰ 10 seconds remaining! Hurry up!", DateTime.UtcNow);
+                }
+                else if (remainingTime == 5)
+                {
+                    await _hubContext.Clients.Group(gameId).SendAsync("QuizMasterMessage", 
+                        "⏰ 5 seconds left!", DateTime.UtcNow);
+                }
+                else if (remainingTime == 0)
+                {
+                    await _hubContext.Clients.Group(gameId).SendAsync("QuizMasterMessage", 
+                        "⏰ Time's up! Let's see the results...", DateTime.UtcNow);
+                    break;
+                }
+
+                if (remainingTime > 0)
+                {
+                    await Task.Delay(1000); // Wait 1 second
+                }
+            }
+        });
     }
 }

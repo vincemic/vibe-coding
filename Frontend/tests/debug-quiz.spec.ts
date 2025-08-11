@@ -5,8 +5,7 @@ test.describe('Quiz Game - Debug Tests', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     
-    // Navigate to quiz
-    await page.click('text=Quiz Game');
+    // Quiz loads directly - no navigation needed
     await expect(page.locator('.quiz-container')).toBeVisible();
     
     console.log('Quiz container visible');

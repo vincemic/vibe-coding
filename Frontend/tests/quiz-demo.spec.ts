@@ -9,8 +9,7 @@ test.describe('Quiz Game - Final Demo', () => {
     await page.waitForLoadState('networkidle');
     console.log('✅ Application loaded');
     
-    // Navigate to quiz section
-    await page.click('text=Quiz Game');
+    // Quiz loads directly - no navigation needed
     await expect(page.locator('.quiz-container')).toBeVisible();
     console.log('✅ Quiz page loaded');
     

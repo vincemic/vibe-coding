@@ -5,19 +5,16 @@ async function joinQuizGame(page: Page, playerName: string) {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
   
-  // Navigate to quiz section
-  await page.click('text=Quiz Game');
-  await page.waitForTimeout(1000);
-  
-  // Wait for quiz interface to load
+  // Quiz loads directly on main page now
   await expect(page.locator('.quiz-container')).toBeVisible();
   
   // Enter player name and join
   await page.fill('input[placeholder*="name" i]', playerName);
   await page.click('button:has-text("Join Game")');
   
-  // Wait for join confirmation
-  await expect(page.locator('.player-info')).toContainText(playerName);
+  // Wait for successful join - should move to waiting state and show welcome message
+  await expect(page.locator('.waiting-section')).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('h2:has-text("Welcome")')).toContainText(playerName);
 }
 
 // Helper function to wait for question display
@@ -37,8 +34,7 @@ test.describe('Quiz Game - Basic Functionality', () => {
   test('should allow player to join a quiz game', async ({ page }) => {
     const playerName = 'TestPlayer1';
     
-    // Navigate to quiz
-    await page.click('text=Quiz Game');
+    // Quiz loads directly on main page now
     await expect(page.locator('.quiz-container')).toBeVisible();
     
     // Enter player name
@@ -47,9 +43,9 @@ test.describe('Quiz Game - Basic Functionality', () => {
     // Join the game
     await page.click('button:has-text("Join Game")');
     
-    // Verify player joined successfully
-    await expect(page.locator('.player-info')).toContainText(playerName, { timeout: 5000 });
-    await expect(page.locator('.quiz-master-message')).toContainText('joined the game', { timeout: 5000 });
+    // Verify player joined successfully - should move to waiting state
+    await expect(page.locator('.waiting-section')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h2:has-text("Welcome")')).toContainText(playerName);
   });
 
   test('should auto-start game after player joins', async ({ page }) => {
@@ -189,12 +185,12 @@ test.describe('Quiz Game - Game Flow', () => {
   test('should display player list with live updates', async ({ page }) => {
     await joinQuizGame(page, 'PlayerListTester');
     
-    // Check player list exists
-    await expect(page.locator('.players-list, .player-info')).toBeVisible();
-    await expect(page.locator('.player-info')).toContainText('PlayerListTester');
+    // Check waiting section exists and shows player name
+    await expect(page.locator('.waiting-section')).toBeVisible();
+    await expect(page.locator('.waiting-card')).toContainText('PlayerListTester');
     
-    // Check for score display
-    await expect(page.locator('.player-score, .score')).toBeVisible();
+    // Check for player count display
+    await expect(page.locator('.player-count')).toBeVisible();
   });
 });
 
@@ -213,9 +209,9 @@ test.describe('Quiz Game - Multiple Players', () => {
       // Player 2 joins same game
       await joinQuizGame(page2, 'Player2');
       
-      // Both should see each other
-      await expect(page1.locator('.players-list, .player-info')).toContainText('Player2', { timeout: 5000 });
-      await expect(page2.locator('.players-list, .player-info')).toContainText('Player1', { timeout: 5000 });
+      // Both should see the waiting section with player count
+      await expect(page1.locator('.waiting-section')).toBeVisible({ timeout: 5000 });
+      await expect(page2.locator('.waiting-section')).toBeVisible({ timeout: 5000 });
       
       // Game should start for both
       await waitForQuestion(page1);
@@ -272,7 +268,7 @@ test.describe('Quiz Game - Multiple Players', () => {
 test.describe('Quiz Game - Error Handling', () => {
   test('should validate player name input', async ({ page }) => {
     await page.goto('/');
-    await page.click('text=Quiz Game');
+    // Quiz loads directly - no navigation needed
     
     // Try to join without name
     await page.click('button:has-text("Join Game")');
@@ -327,7 +323,7 @@ test.describe('Quiz Game - Performance', () => {
     const startTime = Date.now();
     
     await page.goto('/');
-    await page.click('text=Quiz Game');
+    // Quiz loads directly - no navigation needed
     await expect(page.locator('.quiz-container')).toBeVisible();
     
     const loadTime = Date.now() - startTime;

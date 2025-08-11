@@ -25,11 +25,10 @@ test.describe('Quiz Game - SignalR Debug', () => {
     
     console.log('Initial requests:', requests.slice(-5));
     
-    // Navigate to quiz
-    await page.click('text=Quiz Game');
+    // Quiz loads directly - no navigation needed
     await expect(page.locator('.quiz-container')).toBeVisible();
     
-    console.log('After navigation requests:', requests.slice(-5));
+    console.log('After page load requests:', requests.slice(-5));
     console.log('Console logs so far:', logs.slice(-5));
     
     // Fill name and join

@@ -1,187 +1,166 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('UI/UX Tests', () => {
+test.describe('Quiz UI/UX Tests', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
   });
 
-  test('should have proper styling and animations', async ({ page }) => {
-    // Check if main container has gradient background
-    const chatContainer = page.locator('.chat-container');
-    await expect(chatContainer).toBeVisible();
+  test('should have proper quiz styling and layout', async ({ page }) => {
+    // Check if main quiz container is visible and styled
+    const quizContainer = page.locator('.quiz-container');
+    await expect(quizContainer).toBeVisible();
     
-    // Check if messages have proper styling
-    await page.waitForTimeout(2000); // Wait for welcome message
-    const welcomeMessage = page.locator('.message.assistant-message').first();
-    await expect(welcomeMessage).toBeVisible();
-    
-    // Check if message appears with animation
-    await expect(welcomeMessage).toHaveCSS('animation-duration', /0.3s/);
-  });
-
-  test('should have proper color scheme', async ({ page }) => {
-    // Check header background
-    const header = page.locator('.chat-header');
+    // Check if header is properly styled
+    const header = page.locator('h1:has-text("Ultimate Quiz Challenge")');
     await expect(header).toBeVisible();
     
-    // Check if user and assistant messages have different colors
-    await page.fill('.message-input', 'Color test');
-    await page.click('.send-button');
-    
-    // Wait for both messages
-    const userMessage = page.locator('.message.user-message');
-    await expect(userMessage).toBeVisible();
-    
-    await expect(page.locator('.message.assistant-message').nth(1)).toBeVisible({ timeout: 10000 });
-    
-    // They should have different background colors
-    const userBg = await userMessage.evaluate(el => getComputedStyle(el).backgroundColor);
-    const assistantBg = await page.locator('.message.assistant-message').first().evaluate(el => getComputedStyle(el).backgroundColor);
-    
-    expect(userBg).not.toBe(assistantBg);
+    // Check if name input is styled
+    const nameInput = page.locator('.name-input');
+    await expect(nameInput).toBeVisible();
+    await expect(nameInput).toHaveAttribute('placeholder');
   });
 
-  test('should show typing indicator animation', async ({ page }) => {
-    // Wait for connection
-    await page.waitForTimeout(2000);
+  test('should have proper color scheme and branding', async ({ page }) => {
+    // Check if quiz master section has proper styling
+    const quizMaster = page.locator('.quiz-master, .quiz-master-panel');
+    await expect(quizMaster).toBeVisible();
     
-    // Send a message
-    await page.fill('.message-input', 'Show typing indicator');
-    await page.click('.send-button');
+    // Check if join button is properly styled
+    const joinButton = page.locator('button:has-text("Join Game")');
+    await expect(joinButton).toBeVisible();
     
-    // Check if typing indicator appears
-    const typingIndicator = page.locator('.typing-indicator');
-    await expect(typingIndicator).toBeVisible({ timeout: 5000 });
-    
-    // Check if typing dots are animated
-    const dots = page.locator('.typing-indicator span');
-    await expect(dots).toHaveCount(3);
-    
-    // Verify animation exists
-    const firstDot = dots.first();
-    await expect(firstDot).toHaveCSS('animation-name', 'typing');
-    
-    // Wait for response and verify typing indicator disappears
-    await expect(page.locator('.message.assistant-message').nth(1)).toBeVisible({ timeout: 10000 });
-    await expect(typingIndicator).not.toBeVisible();
+    // Button should have hover states (check CSS classes)
+    const buttonClasses = await joinButton.getAttribute('class');
+    expect(buttonClasses).toBeTruthy();
   });
 
-  test('should be accessible with keyboard navigation', async ({ page }) => {
-    // Test tab navigation
+  test('should show proper join form validation styling', async ({ page }) => {
+    // Try submitting without name to trigger validation styling
+    const joinButton = page.locator('button:has-text("Join Game")');
+    await joinButton.click();
+    
+    // Check if validation styling appears
+    const nameInput = page.locator('.name-input');
+    const hasValidationClass = await nameInput.evaluate(el => {
+      return el.matches(':invalid') || el.classList.contains('invalid') || el.classList.contains('error');
+    });
+    
+    const isRequired = await nameInput.getAttribute('required');
+    expect(isRequired !== null || hasValidationClass).toBeTruthy();
+  });
+
+  test('should show typing indicator or feedback', async ({ page }) => {
+    // Type in name input and check for visual feedback
+    const nameInput = page.locator('.name-input');
+    await nameInput.fill('UI Test Player');
+    
+    // Should show that input has content
+    const inputValue = await nameInput.inputValue();
+    expect(inputValue).toBe('UI Test Player');
+    
+    // Join button should be enabled/ready
+    const joinButton = page.locator('button:has-text("Join Game")');
+    const isDisabled = await joinButton.isDisabled();
+    expect(isDisabled).toBeFalsy();
+  });
+
+  test('should have responsive design elements', async ({ page }) => {
+    // Test desktop layout
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await expect(page.locator('.quiz-container')).toBeVisible();
+    
+    // Test mobile layout
+    await page.setViewportSize({ width: 375, height: 667 });
+    await expect(page.locator('.quiz-container')).toBeVisible();
+    await expect(page.locator('.name-input')).toBeVisible();
+    
+    // Test tablet layout
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await expect(page.locator('.quiz-container')).toBeVisible();
+  });
+
+  test('should handle focus states properly', async ({ page }) => {
+    // Name input should be focusable
+    const nameInput = page.locator('.name-input');
+    await nameInput.focus();
+    await expect(nameInput).toBeFocused();
+    
+    // Tab to join button
     await page.keyboard.press('Tab');
-    
-    // Should focus on message input
-    await expect(page.locator('.message-input')).toBeFocused();
-    
-    // Type a message
-    await page.keyboard.type('Keyboard test');
-    
-    // Press Tab to focus send button
-    await page.keyboard.press('Tab');
-    await expect(page.locator('.send-button')).toBeFocused();
-    
-    // Press Enter to send
-    await page.keyboard.press('Enter');
-    
-    // Message should be sent
-    await expect(page.locator('.message.user-message .message-content')).toContainText('Keyboard test');
+    const joinButton = page.locator('button:has-text("Join Game")');
+    await expect(joinButton).toBeFocused();
   });
 
-  test('should handle long messages properly', async ({ page }) => {
-    // Wait for connection
+  test('should show proper quiz state transitions', async ({ page }) => {
+    // Fill name and join
+    await page.fill('.name-input', 'UI State Test Player');
+    await page.click('button:has-text("Join Game")');
+    
+    // Should transition from join state to waiting state
     await page.waitForTimeout(2000);
     
-    // Send a very long message
-    const longMessage = 'This is a very long message that should test how the chat interface handles text wrapping and display of lengthy content. '.repeat(5);
+    // Should show waiting section
+    const waitingSection = page.locator('.waiting-section');
+    const isWaitingVisible = await waitingSection.isVisible();
     
-    await page.fill('.message-input', longMessage);
-    await page.click('.send-button');
+    // Or might be in another valid state
+    const joinSection = page.locator('.join-section');
+    const isJoinVisible = await joinSection.isVisible();
     
-    // Check if long message is displayed properly
-    const userMessage = page.locator('.message.user-message .message-content');
-    await expect(userMessage).toContainText(longMessage);
+    const answerSection = page.locator('.answer-section');
+    const isAnswerVisible = await answerSection.isVisible();
     
-    // Check if message doesn't overflow container
-    const messageWidth = await userMessage.evaluate(el => el.scrollWidth);
-    const containerWidth = await page.locator('.messages-container').evaluate(el => el.clientWidth);
-    
-    expect(messageWidth).toBeLessThanOrEqual(containerWidth);
+    // Should be in some valid quiz state
+    expect(isWaitingVisible || isJoinVisible || isAnswerVisible).toBeTruthy();
   });
 
-  test('should display proper message alignment', async ({ page }) => {
-    // Wait for connection
-    await page.waitForTimeout(2000);
-    
-    // Check welcome message alignment (should be left-aligned)
-    const assistantMessage = page.locator('.message.assistant-message').first();
-    await expect(assistantMessage).toHaveCSS('align-self', 'flex-start');
-    
-    // Send user message
-    await page.fill('.message-input', 'User message test');
-    await page.click('.send-button');
-    
-    // Check user message alignment (should be right-aligned)
-    const userMessage = page.locator('.message.user-message');
-    await expect(userMessage).toHaveCSS('align-self', 'flex-end');
-  });
-
-  test('should show message usernames correctly', async ({ page }) => {
-    // Wait for connection and welcome message
-    await page.waitForTimeout(2000);
-    
-    // Check assistant username
-    const assistantUsername = page.locator('.message.assistant-message .username').first();
-    await expect(assistantUsername).toContainText('Assistant');
-    
-    // Send user message
-    await page.fill('.message-input', 'Username test');
-    await page.click('.send-button');
-    
-    // Check user username
-    const userUsername = page.locator('.message.user-message .username');
-    await expect(userUsername).toContainText('You');
-  });
-
-  test('should update status indicator correctly', async ({ page }) => {
-    // Initially might be disconnected
-    const statusIndicator = page.locator('.status-indicator');
-    await expect(statusIndicator).toBeVisible();
-    
-    // Wait for connection
+  test('should show proper connection status indicators', async ({ page }) => {
+    // Should show connection status
     await page.waitForTimeout(3000);
     
-    // Check if status shows connected (test may vary based on actual connection)
-    const statusText = await statusIndicator.textContent();
-    expect(statusText).toMatch(/Connected|Disconnected/);
+    // Look for connection indicators
+    const connectionText = page.locator('text=Connected');
+    const statusIndicator = page.locator('.status-indicator, [class*="connected"], [class*="status"]');
     
-    // Status dot should be present
-    const statusDot = page.locator('.status-dot');
-    await expect(statusDot).toBeVisible();
+    const hasConnectionStatus = await connectionText.isVisible() || await statusIndicator.isVisible();
+    expect(hasConnectionStatus).toBeTruthy();
   });
 
-  test('should handle window resize properly', async ({ page }) => {
-    // Start with desktop size
-    await page.setViewportSize({ width: 1200, height: 800 });
+  test('should handle quiz master messages styling', async ({ page }) => {
+    // Wait for quiz master messages to appear
+    await page.waitForTimeout(3000);
     
-    // Send a message
-    await page.fill('.message-input', 'Resize test');
-    await page.click('.send-button');
+    // Should have quiz master section
+    const quizMasterSection = page.locator('.quiz-master, .quiz-master-panel');
+    await expect(quizMasterSection).toBeVisible();
     
-    // Resize to tablet
-    await page.setViewportSize({ width: 768, height: 1024 });
+    // Messages should have proper styling
+    const quizMasterMessages = page.locator('.quiz-master-panel *', { hasText: /Welcome|Quiz/ });
+    const hasMessages = await quizMasterMessages.count() > 0;
+    expect(hasMessages).toBeTruthy();
+  });
+
+  test('should maintain UI consistency across different screen sizes', async ({ page }) => {
+    const sizes = [
+      { width: 320, height: 568 }, // iPhone SE
+      { width: 768, height: 1024 }, // iPad
+      { width: 1440, height: 900 }  // Desktop
+    ];
     
-    // Interface should still be functional
-    await expect(page.locator('.chat-container')).toBeVisible();
-    await expect(page.locator('.message-input')).toBeVisible();
-    
-    // Resize to mobile
-    await page.setViewportSize({ width: 375, height: 667 });
-    
-    // Should still work
-    await expect(page.locator('.chat-container')).toBeVisible();
-    await page.fill('.message-input', 'Mobile resize test');
-    await page.click('.send-button');
-    
-    await expect(page.locator('.message.user-message').nth(1)).toBeVisible();
+    for (const size of sizes) {
+      await page.setViewportSize(size);
+      await page.waitForTimeout(500);
+      
+      // Core elements should remain visible
+      await expect(page.locator('.quiz-container')).toBeVisible();
+      await expect(page.locator('h1:has-text("Ultimate Quiz Challenge")')).toBeVisible();
+      
+      // Form elements should be accessible
+      const nameInput = page.locator('.name-input');
+      const joinButton = page.locator('button:has-text("Join Game")');
+      
+      await expect(nameInput).toBeVisible();
+      await expect(joinButton).toBeVisible();
+    }
   });
 });

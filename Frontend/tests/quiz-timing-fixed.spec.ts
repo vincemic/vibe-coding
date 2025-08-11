@@ -5,8 +5,7 @@ async function joinQuizGame(page: Page, playerName: string) {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
   
-  // Navigate to quiz section
-  await page.click('text=Quiz Game');
+  // Quiz loads directly - no navigation needed
   await page.waitForTimeout(2000); // Increased wait time
   
   // Wait for quiz interface to load
@@ -94,8 +93,7 @@ test.describe('Quiz Game - Timing Fixed Tests', () => {
   });
 
   test('should handle quiz navigation reliably', async ({ page }) => {
-    // Navigate to quiz
-    await page.click('text=Quiz Game');
+    // Quiz loads directly - no navigation needed
     await page.waitForTimeout(4000); // Extended wait for stability
     
     // Should see quiz interface
@@ -117,7 +115,7 @@ test.describe('Quiz Game - Timing Fixed Tests', () => {
 
   test('should join game when join state is available', async ({ page }) => {
     await page.goto('/');
-    await page.click('text=Quiz Game');
+    // Quiz loads directly - no navigation needed
     await page.waitForTimeout(4000);
     
     // Check if we can join
