@@ -94,7 +94,7 @@ export class QuizSignalRService {
 
   private startConnection(): void {
     this.hubConnection = new signalR.HubConnectionBuilder()
-      .withUrl('http://localhost:5000/quizhub')
+      .withUrl('http://localhost:5001/quizhub')
       .withAutomaticReconnect()
       .build();
 

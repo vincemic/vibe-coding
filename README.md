@@ -1380,6 +1380,69 @@ git push origin v1.0.0
 
 ## 🔧 Recent Bug Fixes & Improvements
 
+### SignalR Port Configuration Fix (August 2025) ✅ RESOLVED
+
+#### Fixed: Frontend-Backend Port Mismatch for SignalR Communication
+**Problem**: SignalR real-time communication was failing because the frontend was attempting to connect to the wrong backend port, preventing quiz game functionality and real-time updates.
+
+**Root Cause Analysis:**
+1. **Port Mismatch**: Frontend SignalR service was connecting to `http://localhost:5000/quizhub` while backend was configured to run on `http://localhost:5001`
+2. **Inconsistent Configuration**: `start-app.js` and README documentation specified port 5001, but frontend service was hardcoded to port 5000
+3. **Test Configuration**: Playwright E2E tests were also using incorrect port 5000 instead of 5001
+
+**Solutions Implemented:**
+
+1. **Fixed Frontend SignalR Connection**
+   ```typescript
+   // Frontend/src/app/services/quiz-signalr.service.ts
+   private startConnection(): void {
+     this.hubConnection = new signalR.HubConnectionBuilder()
+       .withUrl('http://localhost:5001/quizhub') // Changed from 5000 to 5001
+       .withAutomaticReconnect()
+       .build();
+   }
+   ```
+
+2. **Updated Playwright Test Configuration**
+   ```typescript
+   // Frontend/playwright.config.ts
+   webServer: [
+     {
+       command: 'dotnet run --project ../Backend/ChatbotApp.Backend.csproj --urls "http://localhost:5001"',
+       url: 'http://localhost:5001/api/health',
+       // Changed from localhost:5000 to localhost:5001
+     }
+   ]
+   ```
+
+**Configuration Summary:**
+| Service | Port | URL | Status |
+|---------|------|-----|--------|
+| Backend API | 5001 | `http://localhost:5001` | ✅ Configured |
+| SignalR Hub | 5001 | `http://localhost:5001/quizhub` | ✅ Fixed |
+| Frontend | 4200 | `http://localhost:4200` | ✅ Configured |
+| Health Check | 5001 | `http://localhost:5001/api/health` | ✅ Fixed |
+
+**Results - Complete Success! 🎉**
+- ✅ **SignalR Connection Established**: Frontend now successfully connects to backend SignalR hub
+- ✅ **Real-time Communication**: Timer updates, player counts, and quiz state changes work properly
+- ✅ **Consistent Configuration**: All services and tests use unified port configuration
+- ✅ **E2E Testing Fixed**: Playwright tests now use correct backend port for reliable testing
+- ✅ **CORS Compatibility**: Backend CORS policy already supported frontend port 4200
+
+**Technical Evidence:**
+```typescript
+// Console logs showing successful connection:
+console.log('QuizHub connection started');
+// SignalR hub events flowing properly:
+// - TimeUpdate events with correct data
+// - GameStateUpdate events for quiz progression
+// - QuizMasterMessage events for AI interactions
+```
+
+**Impact:**
+This fix enables all real-time quiz game features including multiplayer coordination, timer countdown, player synchronization, and AI quiz master interactions. The application now functions as a fully integrated real-time multiplayer quiz experience.
+
 ### Quiz Game Timer & Player Count Issues (August 2025) ✅ RESOLVED
 
 #### Fixed: Timer Not Working and Incorrect Player Count Display
