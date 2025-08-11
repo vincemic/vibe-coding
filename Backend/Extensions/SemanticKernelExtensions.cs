@@ -7,7 +7,7 @@ namespace ChatbotApp.Backend.Extensions;
 public static class SemanticKernelExtensions
 {
     /// <summary>
-    /// Configures Semantic Kernel with Azure OpenAI and plugins for the chatbot application
+    /// Configures Semantic Kernel with Azure OpenAI and plugins for the quiz application
     /// </summary>
     public static IServiceCollection AddSemanticKernel(this IServiceCollection services, IConfiguration configuration)
     {
@@ -28,8 +28,7 @@ public static class SemanticKernelExtensions
                 apiKey: openAiKey);
         }
         
-        // Add chatbot plugins
-        kernelBuilder.Plugins.AddFromType<ChatbotPlugin>("ChatbotPlugin");
+        // Add plugins
         kernelBuilder.Plugins.AddFromType<UtilityPlugin>("UtilityPlugin");
         
         // Build kernel
@@ -56,7 +55,6 @@ public static class SemanticKernelExtensions
         services.AddLogging(builder =>
         {
             builder.AddFilter("Microsoft.SemanticKernel", LogLevel.Information);
-            builder.AddFilter("ChatbotApp.Backend.Services.SemanticKernelChatService", LogLevel.Debug);
         });
         
         return services;

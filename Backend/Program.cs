@@ -57,9 +57,6 @@ if (!string.IsNullOrEmpty(openAiEndpoint) && !string.IsNullOrEmpty(openAiKey))
 builder.Services.AddSemanticKernel(builder.Configuration);
 builder.Services.AddSemanticKernelLogging();
 
-// Add custom services - Use Semantic Kernel service
-builder.Services.AddScoped<IChatService, SemanticKernelChatService>();
-
 // Add Quiz Service
 builder.Services.AddScoped<IQuizService, QuizService>();
 
@@ -84,7 +81,6 @@ app.UseRouting();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<ChatHub>("/chathub");
 app.MapHub<QuizHub>("/quizhub");
 
 app.Run();

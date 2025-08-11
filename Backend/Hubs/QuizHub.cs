@@ -7,13 +7,11 @@ namespace ChatbotApp.Backend.Hubs;
 public class QuizHub : Hub
 {
     private readonly IQuizService _quizService;
-    private readonly IChatService _chatService;
     private readonly ILogger<QuizHub> _logger;
 
-    public QuizHub(IQuizService quizService, IChatService chatService, ILogger<QuizHub> logger)
+    public QuizHub(IQuizService quizService, ILogger<QuizHub> logger)
     {
         _quizService = quizService;
-        _chatService = chatService;
         _logger = logger;
     }
 
@@ -32,23 +30,14 @@ public class QuizHub : Hub
                 await Clients.Caller.SendAsync("GameCreated", activeGame.Id);
             }
 
-            // Send welcome message and game state
+            // Only send welcome message - don't send game state until player joins
             await Clients.Caller.SendAsync("QuizMasterMessage", 
                 "🎯 Welcome to the Ultimate Quiz Challenge! I'm your Quiz Master AI. " +
                 "Please tell me your name to join the game!", 
                 DateTime.UtcNow);
 
-            await Clients.Caller.SendAsync("GameStateUpdate", new GameUpdate
-            {
-                State = activeGame.State,
-                Message = $"Game {activeGame.Id} - {activeGame.Players.Count}/{activeGame.MaxPlayers} players",
-                Data = new { 
-                    GameId = activeGame.Id,
-                    PlayerCount = activeGame.Players.Count,
-                    MaxPlayers = activeGame.MaxPlayers,
-                    State = activeGame.State.ToString()
-                }
-            });
+            // Don't send GameStateUpdate here - let the user stay in 'joining' state
+            // until they actually join the game
         }
         catch (Exception ex)
         {
@@ -90,6 +79,9 @@ public class QuizHub : Hub
                 }
                 return;
             }
+
+            // Add player to the game's SignalR group
+            await Groups.AddToGroupAsync(Context.ConnectionId, activeGame.Id);
 
             // Welcome the player
             await Clients.Caller.SendAsync("QuizMasterMessage", 
@@ -161,29 +153,14 @@ public class QuizHub : Hub
                 return;
             }
 
-            var game = await _quizService.GetGameAsync(gameId);
-            if (game == null) return;
-
-            // Announce game start
-            await Clients.All.SendAsync("QuizMasterMessage", 
-                $"🚀 Let the Quiz Challenge begin! We have {game.Players.Count} brave contestants. " +
-                "Get ready for 10 exciting questions! First question coming up in 3 seconds...", 
-                DateTime.UtcNow);
-
-            await Clients.All.SendAsync("GameStateUpdate", new GameUpdate
-            {
-                State = GameState.Starting,
-                Message = "Game starting...",
-                Data = new { Countdown = 3 }
-            });
-
-            // Start first question after delay
-            await Task.Delay(3000);
-            await SendCurrentQuestion(gameId);
+            // QuizService now handles all game state notifications via IHubContext
+            // No additional notifications needed here to avoid conflicts
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error starting game {GameId}", gameId);
+            await Clients.Caller.SendAsync("QuizMasterMessage", 
+                "❌ An error occurred while starting the game.", DateTime.UtcNow);
         }
     }
 
@@ -240,6 +217,9 @@ public class QuizHub : Hub
             var activeGame = _quizService.GetActiveGame();
             if (activeGame != null)
             {
+                // Remove from SignalR group
+                await Groups.RemoveFromGroupAsync(Context.ConnectionId, activeGame.Id);
+                
                 var removed = await _quizService.RemovePlayerAsync(activeGame.Id, Context.ConnectionId);
                 if (removed)
                 {

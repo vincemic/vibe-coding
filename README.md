@@ -7,7 +7,7 @@ Everything in this project, other this README paragraph, was created during a on
 
 # AI Multiplayer Quiz Game
 
-A modern, production-ready web-based multiplayer quiz game built with Angular 18 frontend and .NET 8 backend, featuring an AI Quiz Master powered by Azure OpenAI and real-time communication via SignalR. Originally a chatbot application, now transformed into an engaging multiplayer quiz experience.
+A modern, production-ready web-based multiplayer quiz game built with Angular 18 frontend and .NET 8 backend, featuring an AI Quiz Master powered by Azure OpenAI and real-time communication via SignalR.
 
 ## 🎮 Game Features
 

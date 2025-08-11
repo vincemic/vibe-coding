@@ -65,8 +65,8 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: [
     {
-      command: 'dotnet run --project ../Backend/ChatbotApp.Backend.csproj --urls "http://localhost:5001"',
-      url: 'http://localhost:5001/api/health',
+      command: 'dotnet run --project ../Backend/ChatbotApp.Backend.csproj --urls "http://localhost:5000"',
+      url: 'http://localhost:5000/api/health',
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
     },

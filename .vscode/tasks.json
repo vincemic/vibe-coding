@@ -76,6 +76,18 @@
 			],
 			"isBackground": true,
 			"group": "build"
+		},
+		{
+			"label": "run-backend-fixed",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"run",
+				"--project",
+				"Backend/ChatbotApp.Backend.csproj"
+			],
+			"isBackground": true,
+			"group": "build"
 		}
 	]
 }

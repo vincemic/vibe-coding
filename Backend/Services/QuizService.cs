@@ -1,6 +1,7 @@
 using ChatbotApp.Backend.Models;
-using ChatbotApp.Backend.Services;
 using Microsoft.SemanticKernel;
+using Microsoft.AspNetCore.SignalR;
+using ChatbotApp.Backend.Hubs;
 
 namespace ChatbotApp.Backend.Services;
 
@@ -22,16 +23,16 @@ public interface IQuizService
 public class QuizService : IQuizService
 {
     private readonly ILogger<QuizService> _logger;
-    private readonly IChatService _chatService;
     private readonly Kernel _kernel;
+    private readonly IHubContext<QuizHub> _hubContext;
     private readonly Dictionary<string, QuizGame> _games = new();
     private readonly object _gamesLock = new();
 
-    public QuizService(ILogger<QuizService> logger, IChatService chatService, Kernel kernel)
+    public QuizService(ILogger<QuizService> logger, Kernel kernel, IHubContext<QuizHub> hubContext)
     {
         _logger = logger;
-        _chatService = chatService;
         _kernel = kernel;
+        _hubContext = hubContext;
     }
 
     public async Task<QuizGame> CreateGameAsync()
@@ -96,16 +97,24 @@ public class QuizService : IQuizService
 
             game.State = GameState.Starting;
             _logger.LogInformation("Starting game {GameId} with {PlayerCount} players", gameId, game.Players.Count);
-            
-            // Start first question after a brief delay
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(3000); // 3 second countdown
-                await NextQuestionAsync(gameId);
-            });
-
-            return true;
         }
+        
+        // Send starting notification
+        await _hubContext.Clients.Group(gameId).SendAsync("GameStateUpdate", new GameUpdate
+        {
+            State = GameState.Starting,
+            Message = "Game is starting...",
+            Data = null
+        });
+        
+        // Start first question after a brief delay
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(3000); // 3 second countdown
+            await NextQuestionAsync(gameId);
+        });
+
+        return true;
     }
 
     public async Task<QuizAnswer?> SubmitAnswerAsync(string gameId, string playerId, int selectedOption)
@@ -255,9 +264,10 @@ public class QuizService : IQuizService
 
     public async Task<bool> NextQuestionAsync(string gameId)
     {
+        QuizGame? game;
         lock (_gamesLock)
         {
-            if (!_games.TryGetValue(gameId, out var game))
+            if (!_games.TryGetValue(gameId, out game))
                 return false;
 
             // Clear previous question answers and reset player states
@@ -271,6 +281,16 @@ public class QuizService : IQuizService
             if (game.CurrentQuestionIndex >= game.TotalQuestions)
             {
                 game.State = GameState.GameOver;
+                // Send game over notification
+                _ = Task.Run(async () =>
+                {
+                    await _hubContext.Clients.Group(gameId).SendAsync("GameStateUpdate", new GameUpdate
+                    {
+                        State = game.State,
+                        Message = "Game Over!",
+                        Data = await GetFinalResultsAsync(gameId)
+                    });
+                });
                 return true;
             }
 
@@ -279,36 +299,79 @@ public class QuizService : IQuizService
 
             _logger.LogInformation("Starting question {QuestionIndex} for game {GameId}", 
                 game.CurrentQuestionIndex + 1, gameId);
+        }
 
-            // Start answer collection after brief display
-            _ = Task.Run(async () =>
+        // Send question display notification
+        var currentQuestion = game.CurrentQuestion;
+        await _hubContext.Clients.Group(gameId).SendAsync("GameStateUpdate", new GameUpdate
+        {
+            State = GameState.QuestionDisplay,
+            Message = $"Question {game.CurrentQuestionIndex + 1}",
+            Data = new QuestionDisplay
             {
-                await Task.Delay(5000); // 5 seconds to read question
-                
-                lock (_gamesLock)
+                Question = currentQuestion,
+                QuestionNumber = game.CurrentQuestionIndex + 1,
+                TotalQuestions = game.TotalQuestions,
+                TimeLimit = 30,
+                Players = game.Players.Select(p => new PlayerInfo
                 {
-                    if (_games.TryGetValue(gameId, out var g) && g.State == GameState.QuestionDisplay)
-                    {
-                        g.State = GameState.WaitingForAnswers;
-                        g.QuestionStartTime = DateTime.UtcNow; // Reset timer for answers
-                    }
-                }
+                    Id = p.Id,
+                    Name = p.Name,
+                    Score = p.Score,
+                    HasAnswered = p.HasAnswered
+                }).ToList()
+            }
+        });
 
-                // Auto-advance after time limit
-                await Task.Delay(game.QuestionTimeLimit * 1000);
-                
-                lock (_gamesLock)
+        // Start answer collection after brief display
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(5000); // 5 seconds to read question
+            
+            lock (_gamesLock)
+            {
+                if (_games.TryGetValue(gameId, out var g) && g.State == GameState.QuestionDisplay)
                 {
-                    if (_games.TryGetValue(gameId, out var g) && g.State == GameState.WaitingForAnswers)
+                    g.State = GameState.WaitingForAnswers;
+                    g.QuestionStartTime = DateTime.UtcNow; // Reset timer for answers
+                }
+            }
+
+            // Send waiting for answers notification
+            await _hubContext.Clients.Group(gameId).SendAsync("GameStateUpdate", new GameUpdate
+            {
+                State = GameState.WaitingForAnswers,
+                Message = "Submit your answer!",
+                Data = new QuestionDisplay
+                {
+                    Question = currentQuestion,
+                    QuestionNumber = game.CurrentQuestionIndex + 1,
+                    TotalQuestions = game.TotalQuestions,
+                    TimeLimit = 30,
+                    Players = game.Players.Select(p => new PlayerInfo
                     {
-                        g.State = GameState.ShowingResults;
-                        g.CurrentQuestionIndex++;
-                    }
+                        Id = p.Id,
+                        Name = p.Name,
+                        Score = p.Score,
+                        HasAnswered = p.HasAnswered
+                    }).ToList()
                 }
             });
 
-            return true;
-        }
+            // Auto-advance after time limit
+            await Task.Delay(game.QuestionTimeLimit * 1000);
+            
+            lock (_gamesLock)
+            {
+                if (_games.TryGetValue(gameId, out var g) && g.State == GameState.WaitingForAnswers)
+                {
+                    g.State = GameState.ShowingResults;
+                    g.CurrentQuestionIndex++;
+                }
+            }
+        });
+
+        return true;
     }
 
     public async Task<bool> RemovePlayerAsync(string gameId, string connectionId)
