@@ -71,12 +71,11 @@ builder.Services.AddLogging(logging =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-// Temporarily always use development CORS for debugging
 app.UseDeveloperExceptionPage();
+
+// Apply CORS before other middleware
 app.UseCors("AllowDevelopment");
 
-app.UseHttpsRedirection();
-app.UseCors("AllowDevelopment");
 app.UseRouting();
 app.UseAuthorization();
 

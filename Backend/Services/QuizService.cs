@@ -119,9 +119,12 @@ public class QuizService : IQuizService
 
     public async Task<QuizAnswer?> SubmitAnswerAsync(string gameId, string playerId, int selectedOption)
     {
+        QuizGame? game;
+        bool allAnswered = false;
+        
         lock (_gamesLock)
         {
-            if (!_games.TryGetValue(gameId, out var game))
+            if (!_games.TryGetValue(gameId, out game))
                 return null;
 
             if (game.State != GameState.WaitingForAnswers)
@@ -149,8 +152,29 @@ public class QuizService : IQuizService
             _logger.LogInformation("Player {PlayerId} submitted answer {Answer} for game {GameId}", 
                 playerId, selectedOption, gameId);
 
-            return answer;
+            // Check if all players have now answered
+            allAnswered = game.AllPlayersAnswered;
+            
+            if (allAnswered)
+            {
+                _logger.LogInformation("All players answered for game {GameId}, ending question early", gameId);
+            }
         }
+
+        // If all players answered, trigger results immediately
+        if (allAnswered)
+        {
+            await ShowQuestionResultsAsync(gameId);
+        }
+        
+        // Send updated player count to all clients
+        await _hubContext.Clients.Group(gameId).SendAsync("TimeUpdate", new {
+            RemainingTime = game?.RemainingTime ?? 0,
+            AnsweredCount = game?.CurrentQuestionAnswers.Count ?? 0,
+            TotalPlayers = game?.Players.Count ?? 0
+        });
+
+        return game?.CurrentQuestionAnswers.LastOrDefault();
     }
 
     public async Task<QuestionResult?> GetQuestionResultAsync(string gameId)
@@ -360,15 +384,6 @@ public class QuizService : IQuizService
 
             // Start timer updates for the question
             await StartQuestionTimer(gameId, game.QuestionTimeLimit);
-            
-            lock (_gamesLock)
-            {
-                if (_games.TryGetValue(gameId, out var g) && g.State == GameState.WaitingForAnswers)
-                {
-                    g.State = GameState.ShowingResults;
-                    g.CurrentQuestionIndex++;
-                }
-            }
         });
 
         return true;
@@ -530,7 +545,9 @@ public class QuizService : IQuizService
 
     private async Task StartQuestionTimer(string gameId, int timeLimitSeconds)
     {
-        _ = Task.Run(async () =>
+        _logger.LogInformation("Starting timer for game {GameId} with {TimeLimit} seconds", gameId, timeLimitSeconds);
+        
+        await Task.Run(async () =>
         {
             for (int remainingTime = timeLimitSeconds; remainingTime >= 0; remainingTime--)
             {
@@ -539,9 +556,20 @@ public class QuizService : IQuizService
                 {
                     if (!_games.TryGetValue(gameId, out game) || game.State != GameState.WaitingForAnswers)
                     {
+                        _logger.LogInformation("Timer stopped for game {GameId} - Game state: {State}", 
+                            gameId, game?.State.ToString() ?? "Unknown");
                         return; // Game ended or changed state, stop timer
                     }
+                    
+                    // Check if all players have answered
+                    if (game.AllPlayersAnswered)
+                    {
+                        _logger.LogInformation("All players answered for game {GameId}, ending question early", gameId);
+                        break;
+                    }
                 }
+
+                _logger.LogDebug("Timer update for game {GameId}: {RemainingTime}s", gameId, remainingTime);
 
                 // Send time update to all clients
                 await _hubContext.Clients.Group(gameId).SendAsync("TimeUpdate", new {
@@ -573,6 +601,46 @@ public class QuizService : IQuizService
                     await Task.Delay(1000); // Wait 1 second
                 }
             }
+            
+            // Timer finished - show results
+            _logger.LogInformation("Timer completed for game {GameId}, showing results", gameId);
+            await ShowQuestionResultsAsync(gameId);
+        });
+    }
+
+    private async Task ShowQuestionResultsAsync(string gameId)
+    {
+        QuizGame? game;
+        lock (_gamesLock)
+        {
+            if (!_games.TryGetValue(gameId, out game) || game.State != GameState.WaitingForAnswers)
+                return;
+
+            game.State = GameState.ShowingResults;
+        }
+
+        // Send results update to clients
+        await _hubContext.Clients.Group(gameId).SendAsync("GameStateUpdate", new GameUpdate
+        {
+            State = GameState.ShowingResults,
+            Message = "Question results",
+            Data = null // TODO: Add actual results data
+        });
+
+        // Wait a few seconds to show results, then move to next question
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(5000); // Show results for 5 seconds
+            
+            lock (_gamesLock)
+            {
+                if (_games.TryGetValue(gameId, out var g) && g.State == GameState.ShowingResults)
+                {
+                    g.CurrentQuestionIndex++;
+                }
+            }
+            
+            await NextQuestionAsync(gameId);
         });
     }
 }

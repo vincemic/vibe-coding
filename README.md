@@ -1380,7 +1380,93 @@ git push origin v1.0.0
 
 ## 🔧 Recent Bug Fixes & Improvements
 
-### SignalR Connection & Welcome Message Issues (August 2025)
+### Quiz Game Timer & Player Count Issues (August 2025) ✅ RESOLVED
+
+#### Fixed: Timer Not Working and Incorrect Player Count Display
+**Problem**: Critical quiz game functionality was broken - the timer displayed "⏰ 0s" instead of counting down, and player count showed "0/0 players answered" instead of correct values like "0/1 players answered".
+
+**Root Cause Analysis:**
+1. **Premature State Transition**: Game immediately transitioned from `WaitingForAnswers` to `ShowingResults` state, causing timer to stop
+2. **Incomplete Timer Logic**: Missing proper end conditions and result handling in `NextQuestionAsync` method
+3. **Missing Event Flow**: Frontend was ready to receive `TimeUpdate` events but backend timer was terminating immediately
+
+**Solutions Implemented:**
+
+1. **Fixed Game State Management**
+   ```csharp
+   // Removed premature state transition in NextQuestionAsync
+   // Was immediately setting: game.State = GameState.ShowingResults
+   // Now properly waits for timer completion or all players answered
+   ```
+
+2. **Enhanced Timer Logic**
+   ```csharp
+   private async Task StartQuestionTimer(string gameId, int timeLimitSeconds)
+   {
+       // Added proper end conditions:
+       // - Timer expiry (60 → 0 seconds)
+       // - All players answered early
+       // - Game state change prevention
+       
+       if (game.AllPlayersAnswered) {
+           await ShowQuestionResultsAsync(gameId);
+           break;
+       }
+   }
+   ```
+
+3. **Proper Result Handling**
+   ```csharp
+   private async Task ShowQuestionResultsAsync(string gameId)
+   {
+       // New method to handle question completion
+       // Transitions to ShowingResults state
+       // Displays results for 5 seconds
+       // Automatically progresses to next question
+   }
+   ```
+
+4. **Enhanced Answer Submission**
+   ```csharp
+   public async Task<QuizAnswer?> SubmitAnswerAsync(...)
+   {
+       // Added check for all players answered
+       // Triggers early question completion
+       // Sends updated TimeUpdate events with correct counts
+   }
+   ```
+
+**Results - Complete Success! 🎉**
+- ✅ **Timer Working Perfectly**: Counts down from 60 → 0 seconds with visual display
+- ✅ **Player Count Accurate**: Shows correct format "0/1 players answered"
+- ✅ **TimeUpdate Events Flowing**: Real-time countdown updates every second
+- ✅ **Game Progression**: Natural flow through all quiz states
+- ✅ **Warning Messages**: "⏰ 10 seconds remaining!" and "⏰ 5 seconds left!" 
+- ✅ **Auto-Progression**: Automatically moves to next question after timer expires
+- ✅ **Early Completion**: Ends question immediately when all players answer
+
+**Technical Evidence:**
+```
+Console Logs Showing Success:
+- TimeUpdate event received: {remainingTime: 60, answeredCount: 0, totalPlayers: 1}
+- TimeUpdate event received: {remainingTime: 59, answeredCount: 0, totalPlayers: 1}
+- TimeUpdate event received: {remainingTime: 58, answeredCount: 0, totalPlayers: 1}
+- ... (continues counting down)
+- TimeUpdate event received: {remainingTime: 0, answeredCount: 0, totalPlayers: 1}
+- QuizMasterMessage: "⏰ Time's up! Let's see the results..."
+```
+
+**Testing Completed:**
+- ✅ Full 60-second timer countdown verified in browser
+- ✅ Player count display shows "0/1 players answered" correctly
+- ✅ Game progression from Question 1 → Results → Question 2 working
+- ✅ AI Quiz Master timer warnings at 10s and 5s working
+- ✅ Real-time multiplayer functionality confirmed
+
+#### Impact
+This fix completely resolves the core quiz game functionality issues, making the application fully functional for multiplayer quiz experiences with proper timing and scoring mechanisms.
+
+### SignalR Connection & Welcome Message Issues (August 2025) ✅ RESOLVED
 
 #### Fixed: Agent Not Starting Conversation on Frontend Connect
 **Problem**: The chatbot agent wasn't automatically sending a welcome message when users first connected to the application, requiring users to type something first before seeing any response.

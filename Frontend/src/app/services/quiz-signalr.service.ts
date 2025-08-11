@@ -144,6 +144,7 @@ export class QuizSignalRService {
     });
 
     this.hubConnection.on('GameStateUpdate', (update: GameUpdate) => {
+      console.log('GameStateUpdate event received:', update);
       this.ngZone.run(() => {
         this.gameStateUpdate$.next(update);
       });
@@ -182,6 +183,7 @@ export class QuizSignalRService {
     });
 
     this.hubConnection.on('TimeUpdate', (update: { remainingTime: number; answeredCount: number; totalPlayers: number }) => {
+      console.log('TimeUpdate event received:', update);
       this.ngZone.run(() => {
         this.timeUpdate$.next(update);
       });
