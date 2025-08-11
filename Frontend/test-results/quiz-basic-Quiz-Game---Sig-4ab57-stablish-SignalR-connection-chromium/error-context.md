@@ -10,5 +10,5 @@
   - paragraph: Waiting for more players to join...
   - strong: 0/10 Players
   - heading "🤖 Quiz Master" [level=3]
-  - text: "👋 TestPlayer1 has joined the game! Players: 1/10 22:24:10 👋 AnswerTester has joined the game! Players: 1/10 22:24:12 👋 ProgressTester has joined the game! Players: 1/10 22:24:13 👋 Player1 has joined the game! Players: 1/10 22:24:27 👋 Player2 has joined the game! Players: 1/10 22:24:28"
+  - text: "👋 ProgressTester has joined the game! Players: 1/10 22:24:13 👋 Player1 has joined the game! Players: 1/10 22:24:27 👋 Player2 has joined the game! Players: 1/10 22:24:28 👋 ErrorTester has joined the game! Players: 1/10 22:24:36"
 ```

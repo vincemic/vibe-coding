@@ -5,8 +5,7 @@ test.describe('Quiz Game - Basic Functionality', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     
-    // Navigate to quiz
-    await page.click('text=Quiz Game');
+    // Should see quiz interface immediately (no navigation needed)
     await page.waitForTimeout(3000);
     
     // Should see quiz interface
@@ -33,12 +32,9 @@ test.describe('Quiz Game - Basic Functionality', () => {
 
   test('should connect to SignalR and show content', async ({ page }) => {
     await page.goto('/');
-    await page.click('text=Quiz Game');
     
-    // Wait for connection
-    await page.waitForTimeout(5000);
-    
-    // Should have quiz container
+    // Should be on quiz page automatically
+    await page.waitForTimeout(5000);    // Should have quiz container
     await expect(page.locator('.quiz-container')).toBeVisible();
     
     // Should have quiz master panel (shows SignalR is working)
@@ -55,7 +51,8 @@ test.describe('Quiz Game - Basic Functionality', () => {
 
   test('should show join form when available', async ({ page }) => {
     await page.goto('/');
-    await page.click('text=Quiz Game');
+    
+    // Should be on quiz page automatically  
     await page.waitForTimeout(4000);
     
     const hasJoinSection = await page.locator('.join-section').isVisible();
@@ -82,7 +79,8 @@ test.describe('Quiz Game - Basic Functionality', () => {
 
   test('should show quiz content regardless of game state', async ({ page }) => {
     await page.goto('/');
-    await page.click('text=Quiz Game');
+    
+    // Should be on quiz page automatically
     await page.waitForTimeout(5000);
     
     // Should have quiz container
